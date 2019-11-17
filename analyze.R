@@ -1,4 +1,13 @@
-setwd('~/TSA in Finance/Project/git/data')
+
+osname = Sys.info()['sysname'] #Get OS name for working directory setting
+
+if (grepl('Windows', osname)){
+  Sys.setlocale("LC_TIME", "C") #FREAKING LOCALE ISSUES WITH DATETIME
+  setwd("G:/Dev/DataScience/TSA-Finance (GitHub Desktop)/data") #Pascal
+} else {
+  setwd("~/TSA in Finance/Project/git/data") #Nic
+}
+
 # https://www.kaggle.com/sudalairajkumar/cryptocurrencypricehistory
 library(fBasics)
 library(collections) # install.packages("collections")
@@ -8,10 +17,10 @@ tso <- Dict()
 # Load
 for (file in list.files(path='.', pattern='*_price.csv')) {
   # READ CSV
-  input <- read.csv(file, sep=',', header = TRUE)
+  input <- read.csv2(file, sep=',', header = TRUE)
   
   # PARSE DATE
-  input$Date <- as.Date(input$Date,format="%b %d, %Y")
+  input$Date <- as.Date(input$Date,format="%b %d, %Y") 
   
   # CREATE TS
   ts.obj <- ts(
@@ -26,6 +35,6 @@ for (file in list.files(path='.', pattern='*_price.csv')) {
 }
 
 # Decompose
-decomposed.ts.btc <- decompose((tso$get('bitcoin'))[,2]) # [,2] -> High
+decomposed.ts.btc <- decompose((tso$get('ethereum'))[,2]) # [,2] -> High || HIL: also look at marketcap?
 plot(decomposed.ts.btc)
 
