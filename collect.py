@@ -66,7 +66,7 @@ class CoinrankingAPI(API):
 
 if __name__ == "__main__":
     api = CoinrankingAPI(timeframe='5y')
-    api.get_coins()
+    api.get_coins(get_all=True)
     coinsDF = pd.read_csv('./data/coins.csv', sep=';', header=0)
     #(coinsDF[coinsDF['symbol'].isin(['BTC', 'ETH', 'BCH'])][['id','symbol']]).apply(api.get_market_data, axis=1)
     (coinsDF[['id','symbol']]).apply(api.get_market_data, axis=1)
