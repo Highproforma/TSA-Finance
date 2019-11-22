@@ -29,19 +29,26 @@ class CoinrankingAPI(API):
     def query(self, endpoint, payload=None):
         return super().query(endpoint, payload=payload)
         
-    def get_coins(self):
-        print('Fetching coins', end='')
+    def get_coins(self, get_all=False):
+        print('Fetching coins.', end='')
         with open('./data/coins.csv', mode='w+') as coinsFH:
             coins_writer = csv.writer(coinsFH, delimiter=';', quotechar='"', quoting=csv.QUOTE_MINIMAL)
             coins_writer.writerow(['id', 'name', 'symbol', 'slug'])
-            payload = {'base': 'USD', 'limit': 100, 'offset': 0}
+            payload = {'base': 'USD', 'limit': 50, 'offset': 0, 'sort': 'marketCap'}
             status, response = self.query(endpoint='coins',payload=payload)
-            while status == 200 and response['data']['stats']['total'] > (response['data']['stats']['offset'] + response['data']['stats']['limit']):
-                print('.', end='')
-                for coin in response['data']['coins']:
-                    coins_writer.writerow([coin['id'], coin['name'], coin['symbol'], coin['slug']])
-                payload['offset'] += payload['limit']
-                status, response = self.query(endpoint='coins',payload=payload)
+            if get_all:
+                while status == 200 and response['data']['stats']['total'] > (response['data']['stats']['offset'] + response['data']['stats']['limit']):
+                    print('.', end='')
+                    for coin in response['data']['coins']:
+                        coins_writer.writerow([coin['id'], coin['name'], coin['symbol'], coin['slug']])
+                    payload['offset'] += payload['limit']
+                    status, response = self.query(endpoint='coins',payload=payload)
+            else:
+                if status == 200:
+                    for coin in response['data']['coins']:
+                        coins_writer.writerow([coin['id'], coin['name'], coin['symbol'], coin['slug']])
+                else:
+                    print('Problem with API! Status Code:', status)
         print('Done!')
 
     def get_market_data(self, coin):
@@ -51,11 +58,14 @@ class CoinrankingAPI(API):
             coins_writer.writerow(['timestamp', 'price'])
             payload = {'base': 'USD'}
             status, response = self.query(endpoint='coin/{}/history/{}'.format(coin.id, self.timeframe), payload=payload)
-            for info in response['data']['history']:
-                coins_writer.writerow([info['timestamp'], info['price']])
+            if status == 200:
+                for info in response['data']['history']:
+                    coins_writer.writerow([info['timestamp'], info['price']])
+            else:
+                print('Problem with API! Status Code:', status)
 
 if __name__ == "__main__":
-    api = CoinrankingAPI(timeframe='24h')
+    api = CoinrankingAPI(timeframe='5y')
     api.get_coins()
     coinsDF = pd.read_csv('./data/coins.csv', sep=';', header=0)
     #(coinsDF[coinsDF['symbol'].isin(['BTC', 'ETH', 'BCH'])][['id','symbol']]).apply(api.get_market_data, axis=1)
