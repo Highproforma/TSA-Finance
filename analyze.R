@@ -8,33 +8,55 @@ if (grepl('Windows', osname)){
   setwd("~/TSA in Finance/Project/git/data") #Nic
 }
 
-# https://www.kaggle.com/sudalairajkumar/cryptocurrencypricehistory
 library(fBasics)
 library(collections) # install.packages("collections")
 
 tso <- Dict()
 
+skip_count <- 0
 # Load
-for (file in list.files(path='.', pattern='*_price.csv')) {
-  # READ CSV
-  input <- read.csv2(file, sep=',', header = TRUE)
+for (file in list.files(path='.', pattern='*_*_*.csv')) {
   
+  # READ CSV
+  input <- read.csv2(file, sep=';', header = TRUE)
+  if(dim(input) == 0){
+    skip_count <- skip_count + 1
+    next
+  }
   # PARSE DATE
-  input$Date <- as.Date(input$Date,format="%b %d, %Y") 
+  input$timestamp <- as.Date(as.POSIXct(as.double(input$timestamp)/1000, origin="1970-01-01")) # / 1000 because we have unix timestamp in ms
   
   # CREATE TS
   ts.obj <- ts(
-    input[,-1], 
-    start=c(as.numeric(strftime(min(input$Date), format = "%Y")), as.numeric(strftime(min(input$Date), format = "%j"))), 
-    end=c(as.numeric(strftime(max(input$Date), format = "%Y")), as.numeric(strftime(max(input$Date), format = "%j"))), 
+    input[,-1],
+    start=c(as.numeric(strftime(min(input$timestamp), format = "%Y")), as.numeric(strftime(min(input$timestamp), format = "%j"))),
+    end=c(as.numeric(strftime(max(input$timestamp), format = "%Y")), as.numeric(strftime(max(input$timestamp), format = "%j"))),
     frequency=365 # days per year 365.25
   )
-  
   # Append to TSOs
-  tso$set(gsub('_price.csv', '', file), ts.obj)
+  tso$set(substr(file, 0, regexpr('_', file)-1), ts.obj)
 }
+cat('Skipped ',skip_count)
 
-# Decompose
-decomposed.ts.btc <- decompose((tso$get('ethereum'))[,2]) # [,2] -> High || HIL: also look at marketcap?
-plot(decomposed.ts.btc)
+# Decompose all
+tso.decomposed <- Dict()
+for (key in tso$keys()){
+  decomposed.ts <- decompose((tso$get(key))) 
+  tso.decomposed$set(key, decomposed.ts)
+}
+# Store results
+saveRDS(tso.decomposed, file = "tso.decomposed.rds")
+
+# Decompose Top 50
+tso.decomposed.top50 <- Dict()
+coins <- read.csv2('coins.csv', sep=';', header = TRUE)
+for (key in coins[0:50,3]){
+  decomposed.ts <- decompose((tso$get(key))) 
+  tso.decomposed.top50$set(key, decomposed.ts)
+}
+# Store results
+saveRDS(tso.decomposed.top50, file = "tso.decomposed.top50.rds")
+
+
+
 
