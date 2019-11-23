@@ -15,17 +15,19 @@ tso <- Dict()
 
 skip_count <- 0
 # Load
-for (file in list.files(path='.', pattern='*_*_*.csv')) {
+for (file in list.files(path='.', pattern='*_5y.csv')) {
   
   # READ CSV
   input <- read.csv2(file, sep=';', header = TRUE)
   if(dim(input) == 0){
+    cat('Skipping ', file)
     skip_count <- skip_count + 1
-    next
+    next()
   }
+  
   # PARSE DATE
   input$timestamp <- as.Date(as.POSIXct(as.double(input$timestamp)/1000, origin="1970-01-01")) # / 1000 because we have unix timestamp in ms
-  
+
   # CREATE TS
   ts.obj <- ts(
     input[,-1],
@@ -57,6 +59,17 @@ for (key in coins[0:50,3]){
 # Store results
 saveRDS(tso.decomposed.top50, file = "tso.decomposed.top50.rds")
 
+
+
+# TSO Top 50
+tso.top50 <- Dict()
+coins <- read.csv2('coins.csv', sep=';', header = TRUE)
+for (key in coins[0:50,3]){
+  tsobj <- tso$get(key)
+  tso.top50$set(key, tsobj)
+}
+# Store results
+saveRDS(tso.top50, file = "tso.top50.rds")
 
 
 
