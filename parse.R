@@ -3,7 +3,7 @@ osname = Sys.info()['sysname'] #Get OS name for working directory setting
 
 if (grepl('Windows', osname)){
   Sys.setlocale("LC_TIME", "C") #FREAKING LOCALE ISSUES WITH DATETIME
-  setwd("G:/Dev/DataScience/TSA-Finance (GitHub Desktop)/data") #Pascal
+  setwd("G:/Dev/DataScience/TSA-Finance/data") #Pascal
 } else {
   setwd("~/TSA in Finance/Project/git/data") #Nic
 }
