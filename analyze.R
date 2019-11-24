@@ -1,11 +1,11 @@
+## ---------------------- Setup and Configuration
+nodename = Sys.info()['nodename'] #Get OS name for dynamic working directory setting
 
-nodename = Sys.info()['nodename'] #Get OS name for working directory setting
-Sys.info()
 if (grepl('SKYLLA', nodename)){
-  Sys.setlocale("LC_TIME", "C") #FREAKING LOCALE ISSUES WITH DATETIME
+  Sys.setlocale("LC_TIME", "C") #LOCALE ISSUES WITH DATETIME ON WINDOWS
   setwd("G:/Dev/DataScience/TSA-Finance/data") #Pascal Desktop
 } else if (grepl('ARES', nodename)) {
-  Sys.setlocale("LC_TIME", "C") #FREAKING LOCALE ISSUES WITH DATETIME
+  Sys.setlocale("LC_TIME", "C") #LOCALE ISSUES WITH DATETIME ON WINDOWS
   setwd("C:/Users/Pascal/Documents/Repository/DataScience/TSA-Finance/data") #Pascal Laptop
 
 } else {
@@ -19,8 +19,9 @@ library(TTR)
 library(dplyr)
 library(matrixStats)
 
-top50 <- readRDS(file = "tso.decomposed.top50.rds")
-tso.top50 <- readRDS(file = "tso.top50.rds")
+## ---------------------- Read-In of serialized objects
+top50 <- readRDS(file = "tso.decomposed.top50.rds")   # decomposed time-series of top 50 currencies
+tso.top50 <- readRDS(file = "tso.top50.rds")          # original time-series of top 50 currencies
 
 rows = function(tab) lapply(
   seq_len(nrow(tab)),
@@ -31,7 +32,7 @@ rows = function(tab) lapply(
 
 # cartesian product
 cart.prod <- expand.grid(top50$keys(),top50$keys())
-cor_limit <- 0.7 # Faustregel
+cor_limit <- 0.7 # Faustregel for statistically significant correlation
 
 for (row in rows(cart.prod)){
   print('')

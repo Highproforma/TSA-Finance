@@ -1,9 +1,13 @@
+## ---------------------- Setup and Configuration
+nodename = Sys.info()['nodename'] #Get OS name for dynamic working directory setting
 
-osname = Sys.info()['sysname'] #Get OS name for working directory setting
+if (grepl('SKYLLA', nodename)){
+  Sys.setlocale("LC_TIME", "C") #LOCALE ISSUES WITH DATETIME ON WINDOWS
+  setwd("G:/Dev/DataScience/TSA-Finance/data") #Pascal Desktop
+} else if (grepl('ARES', nodename)) {
+  Sys.setlocale("LC_TIME", "C") #LOCALE ISSUES WITH DATETIME ON WINDOWS
+  setwd("C:/Users/Pascal/Documents/Repository/DataScience/TSA-Finance/data") #Pascal Laptop
 
-if (grepl('Windows', osname)){
-  Sys.setlocale("LC_TIME", "C") #FREAKING LOCALE ISSUES WITH DATETIME
-  setwd("G:/Dev/DataScience/TSA-Finance/data") #Pascal
 } else {
   setwd("~/TSA in Finance/Project/git/data") #Nic
 }
@@ -14,7 +18,9 @@ library(collections) # install.packages("collections")
 tso <- Dict()
 
 skip_count <- 0
-# Load
+
+
+## ---------------------- Load and Transformation to TSO
 for (file in list.files(path='.', pattern='*_5y.csv')) {
   
   # READ CSV
@@ -40,13 +46,15 @@ for (file in list.files(path='.', pattern='*_5y.csv')) {
 }
 cat('Skipped ',skip_count)
 
+
+## ---------------------- TSO Decomposition and Serialization
 # Decompose all
 tso.decomposed <- Dict()
 for (key in tso$keys()){
   decomposed.ts <- decompose((tso$get(key))) 
   tso.decomposed$set(key, decomposed.ts)
 }
-# Store results
+# Serialization - Store all decomposed results
 saveRDS(tso.decomposed, file = "tso.decomposed.rds")
 
 # Decompose Top 50
@@ -56,7 +64,7 @@ for (key in coins[0:50,3]){
   decomposed.ts <- decompose((tso$get(key))) 
   tso.decomposed.top50$set(key, decomposed.ts)
 }
-# Store results
+# Serialization - Store top 50 decomposed results
 saveRDS(tso.decomposed.top50, file = "tso.decomposed.top50.rds")
 
 
@@ -68,7 +76,7 @@ for (key in coins[0:50,3]){
   tsobj <- tso$get(key)
   tso.top50$set(key, tsobj)
 }
-# Store results
+# Serialization - Store original time series 
 saveRDS(tso.top50, file = "tso.top50.rds")
 
 
