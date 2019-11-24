@@ -152,5 +152,5 @@ plot(plot.data.out.window[[ccy]],
 axis(1, at=seq(from = 0, to = length.tso, by = 180), labels=rn[seq(1,length(rn), 180)])
 abline(v=seq(from = 0, to = length.tso, by = 180))
 lines(plot.data.in.window[[ccy]], col='purple')
-
+legend('bottomright', legend=c('Common', 'Unique'), col=c('purple', 'orange'), lty=1)
 
