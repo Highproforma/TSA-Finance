@@ -9,7 +9,7 @@ if (grepl('SKYLLA', nodename)){
   setwd("C:/Users/Pascal/Documents/Repository/DataScience/TSA-Finance/data") #Pascal Laptop
 
 } else {
-  setwd("~/TSA in Finance/Project/git/data") #Nic
+  setwd("~/Code/TSA-Finance/data") #Nic
 }
 
 library(fBasics)
@@ -93,6 +93,7 @@ for (currency in tso.top50$keys()) {
 
 currency.tsos <- Dict()
 length.tso <- 0
+
 # windowing the timeseries -> all should have the same dimensions
 for (currency in tso.top50$keys()) {
   currency.ts <- tso.top50$get(currency)
@@ -103,6 +104,7 @@ for (currency in tso.top50$keys()) {
 
 currency.df <- data.frame(matrix(ncol = length(currency.tsos$keys()), nrow = length.tso))
 colnames(currency.df) <- currency.tsos$keys()
+
 # Build seasonality DF
 for (currency in currency.tsos$keys()){
   decomposed <- decompose(currency.tsos$get(currency))
@@ -111,11 +113,9 @@ for (currency in currency.tsos$keys()){
 
 row.names(currency.df) <- seq(from = as.Date(toString(max_start_date), '%Y, %j'), by = "day", length.out = length.tso)
 
-
 # calculate row stats
-row.mean <- rowMeans(currency.df)
-row.sd <- rowSds(currency.df)
-currency.df <- mutate(currency.df, row.mean = row.mean, row.sd = row.sd)
+currency.df <- transform(currency.df, row.sd=apply(currency.df, 1, sd, na.rm=TRUE))
+currency.df <- transform(currency.df, row.mean=apply(currency.df, 1, mean, na.rm=TRUE))
 
 # generate window
 window.size <- 20
@@ -125,7 +125,7 @@ currency.df <- mutate(currency.df, in.window = seq(from=FALSE, by=FALSE,length.o
 currency.df$in.window <- apply(currency.df,1, function(row) { row[['row.sd']] <= min.sd + window.size } )
 
 # plot
-ccy <- 'BTC'
+ccy <- 'ETH'
 rn <- row.names(currency.df)
 plot.data.out.window <- data.frame(matrix(ncol = 1, nrow = length.tso))
 plot.data.in.window <- data.frame(matrix(ncol = 1, nrow = length.tso))
@@ -142,16 +142,68 @@ currency.df[currency.df$in.window == FALSE,][[ccy]] <- NA
 plot.data.in.window[[ccy]] <- currency.df[[ccy]]
 currency.df <- currency.df.bkp
 
-
+par(mar=c(7,4,4,2))
+day.interval <- 90
 plot(plot.data.out.window[[ccy]],
      type='l',
      main=ccy,
      col='orange',
      ylab = 'Seasonality',
-     xaxt = 'n', xlab='Day'
+     xaxt = 'n', xlab=''
      )
-axis(1, at=seq(from = 0, to = length.tso, by = 180), labels=rn[seq(1,length(rn), 180)])
-abline(v=seq(from = 0, to = length.tso, by = 180))
+axis(1, at=seq(from = 0, to = length.tso, by = day.interval), labels=rn[seq(1,length(rn), day.interval)], las=2)
+abline(v=seq(from = 0, to = length.tso, by = day.interval))
 lines(plot.data.in.window[[ccy]], col='purple')
 legend('bottomright', legend=c('Common', 'Unique'), col=c('purple', 'orange'), lty=1)
 
+
+# get common dates
+row.names(currency.df) <- seq(from = as.Date(toString(max_start_date), '%Y, %j'), by = "day", length.out = length.tso)
+
+common.dates <- row.names(currency.df[currency.df$in.window == TRUE,])
+
+common.dates <- as.Date(common.dates, format="%Y-%m-%d")
+
+# 
+# hist(as.integer(format(common.dates, format = '%j')), 
+#      breaks = 365,
+#      main='Frequency of common days in a year',
+#      xlim=c(1,365),
+#      xlab='Day of the Year', xaxt='n')
+# axis(side=1, at=seq(0,365, 5), labels=seq(0,365,5), las=2)
+
+
+hist(as.integer(format(common.dates, format = '%j')), 
+     breaks = 73,
+     main='Frequency of common days in a year',
+     xlim=c(1,365),
+     xlab='Day of the Year', xaxt='n',
+     col='gray')
+axis(side=1, at=seq(0,365, 5), labels=seq(0,365,5), las=2)
+
+
+
+# EXPERIMENTS
+library(TSA)
+p <- periodogram(as.numeric(tso.top50$get('BTC')))
+dd <- data.frame(freq=p$freq, spec=p$spec)
+order <- dd[order(-dd$spec),]
+top2 <- head(order, 2)
+top2
+time = 1/top2$f
+time
+#[1] 937.5 625.0
+
+s <- stl(tso.top50$get('BTC'), s.window='periodic', na.action = na.omit)
+m <- mstl(tso.top50$get('BTC'))
+d <- decompose(tso.top50$get('BTC'))
+
+plot(m[,'Seasonal365'], type='l', ylab='Seasonality', col='darkgreen')
+lines(d$seasonal, col='lightblue')
+lines(s$time.series[,'seasonal'], col='darkblue')
+legend('bottomright', legend=c('stl', 'mstl', 'decompose'), col=c('darkblue', 'darkgreen', 'lightblue'), lty=1)
+
+# SEASONPLOT
+
+library(forecast)
+ggseasonplot(tso.top50$get('BTC') ,year.labels=TRUE, continuous=TRUE, main='BTC Seasonplot')
