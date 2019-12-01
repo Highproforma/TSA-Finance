@@ -3,6 +3,7 @@ title: "Analysis of Seasonality"
 output:
   html_document:
     df_print: paged
+  pdf_document: default
 ---
 
 # Setup
@@ -124,7 +125,7 @@ currency.df <- transform(currency.df, row.mean=apply(currency.df, 1, mean, na.rm
 
 In our analysis, we consider days as impactful or common amongst the currencies, if the standard deviation accross currencies of a given day, does not exceed a certain limit (window). 
 ```{r}
-window.size <- .25 # factor of minimal standard deviation
+window.size <- .2 # factor of minimal standard deviation
 min.sd <- min(currency.df$row.sd)
 currency.df <- mutate(currency.df, in.window = seq(from=FALSE, by=FALSE,length.out =  length.tso))
 
@@ -179,8 +180,9 @@ common.dates <- as.Date(common.dates, format="%Y-%m-%d")
 
 hist(as.integer(format(common.dates, format = '%j')), 
      breaks = 73,
-     main='Frequency of common days in a year',
+     main='Frequency of common days in an average year',
      xlim=c(1,365),
+     ylim=c(0,20),
      xlab='Day of the Year', xaxt='n',
      col='gray')
 axis(side=1, at=seq(0,365, 5), labels=seq(0,365,5), las=2)
