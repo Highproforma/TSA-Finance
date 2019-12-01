@@ -1,0 +1,335 @@
+---
+title: "Descriptive and Exploratory Analysis of Crypto Dataset"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+
+
+```{r setup, include=FALSE, echo=FALSE, message=FALSE, warning=FALSE}
+require("knitr")
+nodename = Sys.info()['nodename'] #Get OS name for dynamic working directory setting
+
+if (grepl('SKYLLA', nodename)){
+  Sys.setlocale("LC_TIME", "C")
+  opts_knit$set(root.dir = "G:/Dev/DataScience/TSA-Finance/data")
+} else if (grepl('ARES', nodename)) {
+  Sys.setlocale("LC_TIME", "C")
+  opts_knit$set(root.dir = "C:/Users/Pascal/Documents/Repository/DataScience/TSA-Finance/data")
+} else {
+  opts_knit$set(root.dir = "~/Code/TSA-Finance/data")
+}
+
+library(fBasics)
+library(collections)  # install.packages("collections")
+library(forecast)     # install.packages('forecast')
+library(TTR)          # install.packages('TTR')
+library(moments)      # install.packages('moments')
+library(ggplot2)
+library(timeSeries)
+library(tseries)
+```
+
+# Read-In of Serialized Result Object (from API Call)
+First, we deserialize the object created by the previous R-script ("parse.R") which read and aggregated the files produced by the API interface script in Python ("collect.py") into a dictionary-like structure of time-series and applied initial decomposition. The initial Python script interacted with the open coinrank API and extracted daily time-series data for the price development of around 9'000 different crypto assets over the last 5 years (were available).
+
+```{r}
+top50 <- readRDS(file = "tso.decomposed.top50.rds") #Top 50 decomposed time-series objects
+top50.ts <- readRDS(file = "tso.top50.rds") #Top50 original time-series objects
+```
+This gives us the following sets of Crypto Assets
+```{r}
+# Selection of available keys = available crypto assets
+top50$keys()          #previously decomposed time-series
+top50.ts$keys()       #original (price) time-series
+```
+
+The time-series objects in their current form are shown in the below example: 1 month of ETH data from day 1 2016 to day 30 2016.
+```{r warning=FALSE}
+window(top50.ts$get('ETH'), start=c(2016,1), end=c(2016,30))
+```
+
+The decomposed time-series object are shown in the following example, using the summary function on the same example as above: ETH
+```{r warning=FALSE}
+summary(top50$get('ETH'))
+```
+
+
+# Visual Analysis and Central Moments of Data
+To get a first undertanding of the nature of the sourced data, we plot the initial time-series and calculate the 4 central moments to get a quantitative understanding of the distribution. For the sake of brevity, two large, representative examples were picked out of the 50 available time-series.
+
+```{r echo=FALSE}
+# ETH
+plot(top50.ts$get('ETH'),
+     xlab='Time',
+     ylab='Daily Closing Price',
+     main='ETH Daily Price Time-Series 2015-2019',
+     col='darkseagreen',
+     lwd=2
+     ) # Plot
+
+abline(h=mean(top50.ts$get('ETH')), col='blue', lwd=1, lty=3)
+abline(h=median(top50.ts$get('ETH')), col='deeppink', lwd=1, lty=3)
+text(2015, 710, labels='Mean')
+text(2015, 580, labels='Median')
+
+```
+
+The time-series plot already gives us an indication of the volatility of the crypto asset market with both large and sudden swings in both directions and no clearly disernable trend or seasonality. We also see that some data points in the second half 2019 are missing, potentially skewing the analysis results.
+Calculating the central moments we can quantify the characteristics of the time-series:
+
+**Mean**:
+```{r echo=FALSE, warning=FALSE}
+mean(top50.ts$get('ETH'))         # Central Moment: Mean
+#median(top50.ts$get('ETH'))
+```
+**Variance**:
+```{r echo=FALSE, warning=FALSE}
+var(top50.ts$get('ETH'))          # Central Moment: Variance
+```
+
+The very large variance (standard deviation = 493.32) supports our visual findings and suggests substantial volatility.
+
+```{r echo=FALSE, warning=FALSE}
+top50.ts.norm <- diff(log(top50.ts$get('ETH')))
+#plot(top50.ts.norm)
+#plot(decompose(top50.ts.norm))
+```
+
+**Skewness**:
+```{r echo=FALSE, warning=FALSE}
+skewness(top50.ts$get('ETH'))     # Central Moment: Skewness
+```
+**Kurtosis**:
+```{r echo=FALSE, warning=FALSE}
+kurtosis(top50.ts$get('ETH'))     # Central Moment: Kurtosis
+```
+
+The third moment (skewness) value of 0.1568 suggest a slightly right skewed curve while the fourth moment (kurtosis) value of 1.6995 suggests a platykurtic distribution.
+
+As a second example, we will have a look at the bitcoin (BTC) time-series:
+
+
+```{r echo=FALSE, warning=FALSE}
+# BTC
+plot(top50.ts$get('BTC'),
+     xlab='Time',
+     ylab='Daily Closing Price',
+     main='BTC Daily Price Time-Series 2015-2019',
+     col='darkseagreen',
+     lwd=2
+     ) # Plot
+
+abline(h=mean(top50.ts$get('BTC')), col='blue', lwd=1, lty=3)
+abline(h=median(top50.ts$get('BTC')), col='deeppink', lwd=1, lty=3)
+text(2015, 1000, labels='Mean')
+text(2015, 850, labels='Median')        # Plot
+
+# ADD  HISTOGRAM!!
+hist(top50.ts$get('ETH'))
+```
+
+**Mean**:
+```{r echo=FALSE, warning=FALSE}
+mean(top50.ts$get('BTC'))         # Central Moment: Mean
+#median(top50.ts$get('ETH'))
+```
+**Variance**:
+```{r echo=FALSE, warning=FALSE}
+var(top50.ts$get('BTC'))          # Central Moment: Variance
+```
+
+
+```{r echo=FALSE, warning=FALSE}
+top50.ts.norm <- diff(log(top50.ts$get('BTC')))
+#plot(top50.ts.norm)
+#plot(decompose(top50.ts.norm))
+```
+
+**Skewness**:
+```{r echo=FALSE, warning=FALSE}
+skewness(top50.ts$get('BTC'))     # Central Moment: Skewness
+```
+**Kurtosis**:
+```{r echo=FALSE, warning=FALSE}
+kurtosis(top50.ts$get('BTC'))     # Central Moment: Kurtosis
+```
+
+The plot and numbers for BTC above paint a similiar picture as we have already seen with ETH. Large variance coupled with unclear seasonality or patterns seem to be normality for crypto assets.
+
+
+# Testing for Stationarity using (augmented) Dickey-Fuller
+
+By simply looking at our previous plots we would not expect to find any inherent stationarity of crypto assets time-series as we would also not expect that with other publicly traded assets.
+
+In order to prove our hypothesis vis-a-vis stationarity of the available data, we perform a (augmented) Dickey-Fuller test. In-line with the previous examples, we will first have a look at BTC and ETH, before testing the entire sample (50 top crypto assets by marketcapitalisation).
+
+```{r warning=FALSE}
+adf.test(top50.ts$get('ETH')) # p-Value = 0.02107 < 0.05 therefor H0 is rejected and alterantive accepted (stationary)
+adf.test(top50.ts$get('BTC')) # p-Value = 0.01 < 0.05 therefor H0 is rejected and alterantive accepted (stationary)
+```
+
+Results for both hypothesis tests with H0 = non-stationary, HA = stationary we get a p-value below the significance level (alpha = 0.05) therefore we reject H0 and assume HA. This means that both time-series actually do show signs of stationarity. Going back to our graphs we can see that, when also displaying the mean/median, that they do seem to fluctuate around those values.
+Since we did not necessarily expect this attribute in crypto asset prices, we want to have a closer look at the stationarity of all selected 50 crypto assets:
+
+
+**Performing ADF for all 50 crypto assets**
+
+```{r message=TRUE, warning=FALSE}
+adf.results <- list()
+for (crypto in top50.ts$keys()){
+
+  #print(crypto)
+  adf.results[[crypto]] <- adf.test(top50.ts$get(crypto))$p.value
+
+}
+# Non-stationary TS
+top50.ts.nonst <- adf.results[adf.results > 0.05]  # 40 crypto asset time-series are non-stationary
+# Stationary TS
+top50.ts.st <- adf.results[adf.results <= 0.05]  # 10 crypto asset time-series are stationary
+```
+Listing the non-stationary time-series  along with their p-values we see that 40 out of the 50 selected crypto asset distributions are in fact not stationary:
+
+```{r}
+unlist(top50.ts.nonst)
+```
+
+On the other hand we find 10 out of the 50 selected time-series that are stationary. Coincidentally, the two selected examples (BTC and ETH) are both among the already stationary ones:
+```{r}
+unlist(top50.ts.st)
+```
+
+
+
+# Checking for Autocorrelation
+
+```{r}
+par(mfrow=c(1,2))
+
+#Autocorrelation
+plot(acf(top50.ts$get('ETH'), 
+          plot=FALSE
+         ),
+     main='Autocorrelation ETH'
+     )
+
+#Partial-Autocorrelation
+plot(acf(top50.ts$get('ETH'), 
+          plot=FALSE,
+          type='partial'
+         ),
+     main='Partial-Autocorrelation ETH'
+     )
+
+
+```
+
+We see that the **ETH** data is highly autocorrelated between the observed data (daily closing price) as often observed with price series of traded assets. 
+
+We do the same for our other example, **BTC**:
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+par(mfrow=c(1,2))
+
+#Autocorrelation
+plot(acf(top50.ts$get('BTC'), 
+          plot=FALSE
+         ),
+     main='Autocorrelation BTC'
+     )
+
+#Partial-Autocorrelation
+plot(acf(top50.ts$get('BTC'), 
+          plot=FALSE,
+          type='partial'
+         ),
+     main='Partial-Autocorrelation BTC'
+     )
+
+
+```
+
+We can see a very similiar picture for BTC as compared to ETH. Interestingly, there seems to be a spike in autocorrelation on lag 0.03.
+
+
+# Applying Transformation
+
+As we saw previously 40/50 crypto asset time-series are non-stationary. In order to be able to work with those more easily, we will apply transformations to make these series stationary.
+We will first try to apply:
+
+  - logarithm to the target values and
+  - take the first differences
+
+Sometimes, it might not be enough to take the first order differences to make a time-series stationary. We will therefore run another cycle of ADF testing to determine whether or not the transformed time-series is in fact stationary. If a certain crypto time-series is still non-stationary, we may apply Box Cox transformation using an automatically estimated lambda parameter or use the second degree differences.
+
+
+```{r warning=FALSE}
+#difflog of non-stationary time-series
+top50.ts.difflog <- list()
+for ( c in names(top50.ts.nonst) ){
+  top50.ts.difflog[[c]] <- diff(log(top50.ts$get(c)))
+}
+
+#checking for stationarity with ADF after transformation
+adf.results <- list()
+for (crypto in names(top50.ts.difflog)){
+  #print(crypto)
+  adf.results[[crypto]] <- adf.test(top50.ts.difflog[[crypto]])$p.value
+}
+# Non-stationary TS
+top50.ts.nonst_2 <- adf.results[adf.results > 0.05]  # 40 crypto asset time-series are non-stationary
+# Stationary TS
+top50.ts.st_2 <- adf.results[adf.results <= 0.05]
+```
+
+After taking the difflog, all 40 time-series now appear to be stationary:
+
+**number of non stationary time-series (out of 40) after transformation:**
+```{r echo=FALSE}
+length(top50.ts.nonst_2)
+```
+
+**number of stationary time-series (out of 40) after transformation:**
+```{r echo=FALSE}
+length(top50.ts.st_2)
+
+```
+
+
+```{r eval=FALSE, include=FALSE}
+l <- BoxCox.lambda(ts(top50.ts$get('ETH')))
+autoplot(BoxCox(top50.ts$get('ETH'), lambda = l))
+autoplot(ma(top50.ts$get('ETH'), order = 5))
+plot(SMA(top50.ts$get('ETH'), n = 5))
+```
+
+# Correlation of Crypto Assets compared to Bitcoin
+
+In the crypto market, BTC has a special position and in the minds of market participants often represents the entire crypto universe. The assumption being that all (or at least the ones which do not have an underlying value or are bound to such, e.g. the TUSD coin which has a 1:1 binding to the USD value) crypto assets correlate with BTC. To check this hypothesis, the correlation factors for all top 50 crypto assets against BTC shall be investigated.
+
+```{r}
+corr_coef_BTC <- list()
+for ( crypto in top50.ts$keys()){
+    corr_coef_BTC[[paste(crypto,'-BTC', sep='')]] <- cor(x=window(top50.ts$get(crypto),
+                                                                  start=c(2016,1),
+                                                                  end=c(2019,5)),
+                                y=window(top50.ts$get('BTC'),start=c(2016,1),end=c(2019,5)),
+                                use='everything',
+                                method='pearson')
+  
+}
+
+midpts<-barplot(unlist(corr_coef_BTC), xaxt='n' )
+axis(1, at=midpts,labels=names(unlist(corr_coef_BTC)), las=2, cex.axis=0.6)
+
+```
+
+
+# Decomposition and Seasonality
+
+
+
+
+# forecast of seasonality using arima ==> USE SARIMA FOR SEASONALITY!!
+plot(stlf(log(top50$get('ETH')$x), method='arima'))
