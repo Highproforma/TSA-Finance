@@ -126,8 +126,8 @@ abline(h=median(top50.ts$get('BTC')), col='deeppink', lwd=1, lty=3)
 text(2015, 1000, labels='Mean')
 text(2015, 850, labels='Median')        # Plot
 
-# ADD  HISTOGRAM!!
-hist(top50.ts$get('ETH'))
+hist(top50.ts$get('BTC'))
+hist(diff(log(top50.ts$get('BTC'))), breaks = 300)
 ```
 
 **Mean**:
@@ -309,9 +309,12 @@ plot(SMA(top50.ts$get('ETH'), n = 5))
 In the crypto market, BTC has a special position and in the minds of market participants often represents the entire crypto universe. The assumption being that all (or at least the ones which do not have an underlying value or are bound to such, e.g. the TUSD coin which has a 1:1 binding to the USD value) crypto assets correlate with BTC. To check this hypothesis, the correlation factors for all top 50 crypto assets against BTC shall be investigated.
 
 ```{r}
+#hist(top50.ts$get('BTC'), breaks = "Sturges")
+#top50.ts.difflog['XRP']
+
 corr_coef_BTC <- list()
 for ( crypto in top50.ts$keys()){
-    corr_coef_BTC[[paste(crypto,'-BTC', sep='')]] <- cor(x=window(top50.ts$get(crypto),
+    corr_coef_BTC[[paste(crypto,'-BTC', sep='')]] <- cor(x=window(top50.ts$get(crypto),   #using window() here to create an equal-sized subset of the complete time-series since not all of them have the same number of observations.
                                                                   start=c(2016,1),
                                                                   end=c(2019,5)),
                                 y=window(top50.ts$get('BTC'),start=c(2016,1),end=c(2019,5)),
@@ -320,7 +323,29 @@ for ( crypto in top50.ts$keys()){
   
 }
 
-midpts<-barplot(unlist(corr_coef_BTC), xaxt='n' )
+midpts<-barplot(unlist(corr_coef_BTC), xaxt='n', col='darkseagreen' )
+axis(1, at=midpts,labels=names(unlist(corr_coef_BTC)), las=2, cex.axis=0.6)
+
+```
+
+It would appear that the correlation coefficient (Pearson correlation) between the 49 top crypto currencies and bitcoin is not very strong. Surprisingly, most crypto assets show a negative correlation compared to BTC. Those negative correlations are also more pronounced then the present positive correlations.
+
+```{r}
+#hist(top50.ts$get('BTC'), breaks = "Sturges")
+#top50.ts.difflog['XRP']
+
+corr_coef_BTC <- list()
+for ( crypto in top50.ts$keys()){
+    corr_coef_BTC[[paste(crypto,'-BTC', sep='')]] <- cor(x=window(top50.ts$get(crypto),   #using window() here to create an equal-sized subset of the complete time-series since not all of them have the same number of observations.
+                                                                  start=c(2016,1),
+                                                                  end=c(2019,5)),
+                                y=window(top50.ts$get('BTC'),start=c(2016,1),end=c(2019,5)),
+                                use='everything',
+                                method='spearman')
+  
+}
+
+midpts<-barplot(unlist(corr_coef_BTC), xaxt='n', col='seagreen' )
 axis(1, at=midpts,labels=names(unlist(corr_coef_BTC)), las=2, cex.axis=0.6)
 
 ```
