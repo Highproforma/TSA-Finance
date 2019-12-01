@@ -171,6 +171,9 @@ for(ccy in c('BTC', 'ETH', 'XRP', 'BCH', 'LTC')) {
 }
 ```
 
+## Direction of slope
+Analysis of derivative of consecutive days. TBD
+
 ## Common dates
 Thanks to the windowing method, we have identified days that are "common" amongst currencies. Let's quantify these days and see how they spread over a year.
 ```{r}
@@ -186,19 +189,19 @@ hist(as.integer(format(common.dates, format = '%j')),
      xlab='Day of the Year', xaxt='n',
      col='gray')
 axis(side=1, at=seq(0,365, 5), labels=seq(0,365,5), las=2)
-abline(v=c(0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330))
+abline(v=c(0,30.4167,60.8334,91.2501,121.6668,152.0835,182.5002,212.9169,243.3336,273.7503,304.167,334.5837))
 text(0, 15, 'January', srt=90, col = "gray60", adj = c(0, -.15))
-text(30, 15, 'February', srt=90, col = "gray60", adj = c(0, -.15))
-text(60, 15, 'March', srt=90, col = "gray60", adj = c(0, -.15))
-text(90, 15, 'April', srt=90, col = "gray60", adj = c(0, -.15))
-text(120, 15, 'May', srt=90, col = "gray60", adj = c(0, -.15))
-text(150, 15, 'June', srt=90, col = "gray60", adj = c(0, -.15))
-text(180, 15, 'July', srt=90, col = "gray60", adj = c(0, -.15))
-text(210, 15, 'August', srt=90, col = "gray60", adj = c(0, -.15))
-text(240, 15, 'September', srt=90, col = "gray60", adj = c(0, -.15))
-text(270, 15, 'October', srt=90, col = "gray60", adj = c(0, -.15))
-text(300, 15, 'November', srt=90, col = "gray60", adj = c(0, -.15))
-text(330, 15, 'December', srt=90, col = "gray60", adj = c(0, -.15))
+text(30.4167, 15, 'February', srt=90, col = "gray60", adj = c(0, -.15))
+text(60.8334, 15, 'March', srt=90, col = "gray60", adj = c(0, -.15))
+text(91.2501, 15, 'April', srt=90, col = "gray60", adj = c(0, -.15))
+text(121.6668, 15, 'May', srt=90, col = "gray60", adj = c(0, -.15))
+text(152.0835, 15, 'June', srt=90, col = "gray60", adj = c(0, -.15))
+text(182.5002, 15, 'July', srt=90, col = "gray60", adj = c(0, -.15))
+text(212.9169, 15, 'August', srt=90, col = "gray60", adj = c(0, -.15))
+text(243.3336, 15, 'September', srt=90, col = "gray60", adj = c(0, -.15))
+text(273.7503, 15, 'October', srt=90, col = "gray60", adj = c(0, -.15))
+text(304.167, 15, 'November', srt=90, col = "gray60", adj = c(0, -.15))
+text(334.5837, 15, 'December', srt=90, col = "gray60", adj = c(0, -.15))
 ```
 
 # Conclusion
