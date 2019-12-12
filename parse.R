@@ -9,7 +9,7 @@ if (grepl('SKYLLA', nodename)){
   setwd("C:/Users/Pascal/Documents/Repository/DataScience/TSA-Finance/data") #Pascal Laptop
 
 } else {
-  setwd("~/TSA in Finance/Project/git/data") #Nic
+  setwd("~/Code/TSA-Finance/data") #Nic
 }
 
 library(fBasics)
@@ -24,7 +24,7 @@ skip_count <- 0
 for (file in list.files(path='.', pattern='*_5y.csv')) {
   
   # READ CSV
-  input <- read.csv2(file, sep=';', header = TRUE)
+  input <- read.csv2(file, sep=';', header = TRUE, stringsAsFactors = FALSE)
   if(dim(input) == 0){
     cat('Skipping ', file)
     skip_count <- skip_count + 1
@@ -45,7 +45,23 @@ for (file in list.files(path='.', pattern='*_5y.csv')) {
   tso$set(substr(file, 0, regexpr('_', file)-1), ts.obj)
 }
 cat('Skipped ',skip_count)
+# ----------------------------------------------
 
+# USING XTS instead of TS 
+# Experiment
+library(xts)
+
+dat <- read.csv2('BTC_1576167363_5y.csv', sep=';', header = TRUE, stringsAsFactors = FALSE)
+dat$price <- as.numeric(dat$price)
+dat$timestamp <- as.Date(as.POSIXct(as.double(dat$timestamp)/1000, origin="1970-01-01")) # / 1000 because we have unix timestamp in ms
+
+# Convert dat into xts
+btc.xts <- xts(dat[,-1], order.by = dat$timestamp)
+plot.xts(btc.xts)
+
+
+
+# ----------------------------------------------
 
 ## ---------------------- TSO Decomposition and Serialization
 # Decompose all
