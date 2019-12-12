@@ -107,8 +107,8 @@ colnames(currency.df) <- currency.tsos$keys()
 
 # Build seasonality DF
 for (currency in currency.tsos$keys()){
-  decomposed <- decompose(currency.tsos$get(currency))
-  currency.df[currency] <- as.numeric(decomposed$seasonal)
+  decomposed <- stl(currency.tsos$get(currency), s.window='periodic', na.action = na.omit)
+  currency.df[currency] <- as.numeric(decomposed$time.series[,'seasonal'])
 }
 
 row.names(currency.df) <- seq(from = as.Date(toString(max_start_date), '%Y, %j'), by = "day", length.out = length.tso)
@@ -118,7 +118,7 @@ currency.df <- transform(currency.df, row.sd=apply(currency.df, 1, sd, na.rm=TRU
 currency.df <- transform(currency.df, row.mean=apply(currency.df, 1, mean, na.rm=TRUE))
 
 # generate window
-window.size <- 20
+window.size <- 10
 min.sd <- min(currency.df$row.sd)
 currency.df <- mutate(currency.df, in.window = seq(from=FALSE, by=FALSE,length.out =  length.tso))
 
