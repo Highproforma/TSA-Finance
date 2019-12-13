@@ -32,11 +32,27 @@ library(tseries)
 ```
 
 # Read-In of Serialized Result Object (from API Call)
-First, we deserialize the object created by the previous R-script ("parse.R") which read and aggregated the files produced by the API interface script in Python ("collect.py") into a dictionary-like structure of time-series and applied initial decomposition. The initial Python script interacted with the open coinrank API and extracted daily time-series data for the price development of around 9'000 different crypto assets over the last 5 years (were available).
+First, we deserialize the object created by the previous R-script ("parse.R") which read and aggregated the files produced by the API interface script in Python ("collect.py") into a dictionary-like structure of time-series. The initial Python script interacted with the open coinrank API and extracted daily time-series data for the price development of around 9'000 different crypto assets over the last 5 years (were available).
 
 ```{r}
-top50 <- readRDS(file = "tso.decomposed.top50.rds") #Top 50 decomposed time-series objects
+ 
 top50.ts <- readRDS(file = "tso.top50.rds") #Top50 original time-series objects
+```
+
+Secondly, we will decompose each of the loaded top 50 time series
+```{r}
+
+#Decomposition of Top 50 TS
+top50 <- Dict()
+for (key in top50.ts$keys()){
+  tmp <- stl(top50.ts$get(key),
+             s.window = 'periodic',
+             na.action = na.omit
+             )
+
+  top50$set(key, tmp)
+}
+  
 ```
 This gives us the following sets of Crypto Assets
 ```{r}
@@ -53,6 +69,7 @@ window(top50.ts$get('ETH'), start=c(2016,1), end=c(2016,30))
 The decomposed time-series object are shown in the following example, using the summary function on the same example as above: ETH
 ```{r warning=FALSE}
 summary(top50$get('ETH'))
+plot(top50$get('ETH'))
 ```
 
 
@@ -83,7 +100,7 @@ First, we will replace the missing values with the mean (ignoring the missing va
 
 ```{r echo=FALSE, warning=FALSE}
 eth <- top50.ts$get('ETH')
-eth[eth<=1] <- mean(eth, na.rm=TRUE)  #replacing missing values (in this case 1's not 0's) with the mean of the timeseries
+eth[eth<=1] <- mean(as.numeric(eth), na.rm=TRUE)  #replacing missing values (in this case 1's not 0's) with the mean of the timeseries
 
 plot(eth,
      xlab='Time',
@@ -93,8 +110,8 @@ plot(eth,
      lwd=2
      ) # Plot
 
-abline(h=mean(eth, na.rm=TRUE), col='blue', lwd=1, lty=3)
-abline(h=median(eth, na.rm=TRUE), col='deeppink', lwd=1, lty=3)
+abline(h=mean(as.numeric(eth), na.rm=TRUE), col='blue', lwd=1, lty=3)
+abline(h=median(as.numeric(eth), na.rm=TRUE), col='deeppink', lwd=1, lty=3)
 text(2015, 800, labels='Mean')
 text(2015, 580, labels='Median')
 
@@ -104,7 +121,7 @@ We now will look at the distribution of values of the timeseries and calculate f
 
 ```{r echo=FALSE, warning=FALSE}
 hist(
-     eth, 
+     as.numeric(eth), 
      breaks='Sturges', 
      main='Histogram ETH', 
      col='darkseagreen',
@@ -120,29 +137,29 @@ Calculating the central moments we can quantify the characteristics of the time-
 
 **Mean**:
 ```{r echo=FALSE, warning=FALSE}
-mean(eth)         # Central Moment: Mean
+mean(as.numeric(eth))         # Central Moment: Mean
 #median(top50.ts$get('ETH'))
 ```
 **Variance**:
 ```{r echo=FALSE, warning=FALSE}
-var(eth)          # Central Moment: Variance
+var(as.numeric(eth))          # Central Moment: Variance
 ```
 
 The very large variance (standard deviation = 493.32) supports our visual findings and suggests substantial volatility.
 
 ```{r echo=FALSE, warning=FALSE}
-top50.ts.norm <- diff(eth)
+top50.ts.norm <- diff(as.numeric(eth))
 #plot(top50.ts.norm)
 #plot(decompose(top50.ts.norm))
 ```
 
 **Skewness**:
 ```{r echo=FALSE, warning=FALSE}
-skewness(eth)     # Central Moment: Skewness
+skewness(as.numeric(eth))     # Central Moment: Skewness
 ```
 **Kurtosis**:
 ```{r echo=FALSE, warning=FALSE}
-kurtosis(eth)     # Central Moment: Kurtosis
+kurtosis(as.numeric(eth))     # Central Moment: Kurtosis
 ```
 
 The third moment (skewness) value of 0.1568 suggest a slightly right skewed curve while the fourth moment (kurtosis) value of 1.6995 suggests a platykurtic distribution.
@@ -160,8 +177,8 @@ plot(top50.ts$get('BTC'),
      lwd=2
      ) # Plot
 
-abline(h=mean(top50.ts$get('BTC'), na.rm=TRUE), col='blue', lwd=1, lty=3)
-abline(h=median(top50.ts$get('BTC'), na.rm=TRUE), col='deeppink', lwd=1, lty=3)
+abline(h=mean(as.numeric(top50.ts$get('BTC')), na.rm=TRUE), col='blue', lwd=1, lty=3)
+abline(h=median(as.numeric(top50.ts$get('BTC')), na.rm=TRUE), col='deeppink', lwd=1, lty=3)
 text(2015, 1000, labels='Mean')
 text(2015, 850, labels='Median')        # Plot
 
@@ -171,7 +188,7 @@ We see a similiar picture to the ETH timeseries. This series too seems to be sta
 
 ```{r echo=FALSE, warning=FALSE}
 btc <- top50.ts$get('BTC')
-btc[btc<=100] <- mean(btc, na.rm=TRUE)  #replacing missing values (in this case it seems some values are below 10 by mistake, not 0's) with the mean of the timeseries
+btc[btc<=100] <- mean(as.numeric(btc), na.rm=TRUE)  #replacing missing values (in this case it seems some values are below 10 by mistake, not 0's) with the mean of the timeseries
 
 #VERY LOW VALUES SEEM TO HAVE A PROBLEM WITHT HE TRANSFORMATION OF COMMAS 
 plot(btc,
@@ -182,8 +199,8 @@ plot(btc,
      lwd=2
      ) # Plot
 
-abline(h=mean(btc, na.rm=TRUE), col='blue', lwd=1, lty=3)
-abline(h=median(btc, na.rm=TRUE), col='deeppink', lwd=1, lty=3)
+abline(h=mean(as.numeric(btc), na.rm=TRUE), col='blue', lwd=1, lty=3)
+abline(h=median(as.numeric(btc), na.rm=TRUE), col='deeppink', lwd=1, lty=3)
 text(2015, 950, labels='Mean')
 text(2015, 850, labels='Median')
 
@@ -202,18 +219,18 @@ var(btc)          # Central Moment: Variance
 
 
 ```{r echo=FALSE, warning=FALSE}
-top50.ts.norm <- diff(log(top50.ts$get('BTC')))
+top50.ts.norm <- diff(as.numeric(top50.ts$get('BTC')))
 #plot(top50.ts.norm)
 #plot(decompose(top50.ts.norm))
 ```
 
 **Skewness**:
 ```{r echo=FALSE, warning=FALSE}
-skewness(top50.ts$get('BTC'))     # Central Moment: Skewness
+skewness(as.numeric(btc))     # Central Moment: Skewness
 ```
 **Kurtosis**:
 ```{r echo=FALSE, warning=FALSE}
-kurtosis(top50.ts$get('BTC'))     # Central Moment: Kurtosis
+kurtosis(as.numeric(btc))     # Central Moment: Kurtosis
 ```
 
 The plot and numbers for BTC above paint a similiar picture as we have already seen with ETH. Large variance coupled with unclear seasonality or patterns seem to be normality for crypto assets.
@@ -268,14 +285,14 @@ unlist(top50.ts.st)
 par(mfrow=c(1,2))
 
 #Autocorrelation
-plot(acf(top50.ts$get('ETH'), 
+plot(acf(as.numeric(eth), 
           plot=FALSE
          ),
      main='Autocorrelation ETH'
      )
 
 #Partial-Autocorrelation
-plot(acf(top50.ts$get('ETH'), 
+plot(acf(as.numeric(eth), 
           plot=FALSE,
           type='partial'
          ),
@@ -293,14 +310,14 @@ We do the same for our other example, **BTC**:
 par(mfrow=c(1,2))
 
 #Autocorrelation
-plot(acf(top50.ts$get('BTC'), 
+plot(acf(as.numeric(btc), 
           plot=FALSE
          ),
      main='Autocorrelation BTC'
      )
 
 #Partial-Autocorrelation
-plot(acf(top50.ts$get('BTC'), 
+plot(acf(as.numeric(btc), 
           plot=FALSE,
           type='partial'
          ),
@@ -328,7 +345,7 @@ Sometimes, it might not be enough to take the first order differences to make a 
 #difflog of non-stationary time-series
 top50.ts.diff <- list()
 for ( c in names(top50.ts.nonst) ){
-  top50.ts.diff[[c]] <- diff(top50.ts$get(c))
+  top50.ts.diff[[c]] <- diff(as.numeric(top50.ts$get(c)))
 }
 
 #checking for stationarity with ADF after transformation
@@ -374,10 +391,10 @@ In the crypto market, BTC has a special position and in the minds of market part
 
 corr_coef_BTC <- list()
 for ( crypto in top50.ts$keys()){
-    corr_coef_BTC[[paste(crypto,'-BTC', sep='')]] <- cor(x=window(top50.ts$get(crypto),   #using window() here to create an equal-sized subset of the complete time-series since not all of them have the same number of observations.
+    corr_coef_BTC[[paste(crypto,'-BTC', sep='')]] <- cor(x=as.numeric(window(top50.ts$get(crypto),   #using window() here to create an equal-sized subset of the complete time-series since not all of them have the same number of observations.
                                                                   start=c(2016,1),
-                                                                  end=c(2019,5)),
-                                y=window(top50.ts$get('BTC'),start=c(2016,1),end=c(2019,5)),
+                                                                  end=c(2019,5))),
+                                y=as.numeric(window(top50.ts$get('BTC'),start=c(2016,1),end=c(2019,5))),
                                 use='everything',
                                 method='pearson')
   
@@ -396,10 +413,10 @@ It would appear that the correlation coefficient (Pearson correlation) between t
 
 corr_coef_BTC <- list()
 for ( crypto in top50.ts$keys()){
-    corr_coef_BTC[[paste(crypto,'-BTC', sep='')]] <- cor(x=window(top50.ts$get(crypto),   #using window() here to create an equal-sized subset of the complete time-series since not all of them have the same number of observations.
+    corr_coef_BTC[[paste(crypto,'-BTC', sep='')]] <- cor(x=as.numeric(window(top50.ts$get(crypto),   #using window() here to create an equal-sized subset of the complete time-series since not all of them have the same number of observations.
                                                                   start=c(2016,1),
-                                                                  end=c(2019,5)),
-                                y=window(top50.ts$get('BTC'),start=c(2016,1),end=c(2019,5)),
+                                                                  end=c(2019,5))),
+                                y=as.numeric(window(top50.ts$get('BTC'),start=c(2016,1),end=c(2019,5))),
                                 use='everything',
                                 method='spearman')
   
