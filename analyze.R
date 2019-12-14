@@ -105,10 +105,17 @@ for (currency in tso.top50$keys()) {
 currency.df <- data.frame(matrix(ncol = length(currency.tsos$keys()), nrow = length.tso))
 colnames(currency.df) <- currency.tsos$keys()
 
+
 # Build seasonality DF
 for (currency in currency.tsos$keys()){
   decomposed <- stl(currency.tsos$get(currency), s.window='periodic', na.action = na.omit)
-  currency.df[currency] <- as.numeric(decomposed$time.series[,'seasonal'])
+  seasonal.part <- as.numeric(decomposed$time.series[,'seasonal'])
+  seasonal.part.max <- max(seasonal.part)
+  seasonal.part.min <- min(seasonal.part)
+  # normalize data to -1 and 1
+  #currency.df[currency] <- 2 * ((seasonal.part - seasonal.part.min)/(seasonal.part.max - seasonal.part.min)) - 1
+  # normalize data to 0 and 1
+  currency.df[currency] <- (((seasonal.part - seasonal.part.min)/(seasonal.part.max - seasonal.part.min)))
 }
 
 row.names(currency.df) <- seq(from = as.Date(toString(max_start_date), '%Y, %j'), by = "day", length.out = length.tso)
@@ -117,15 +124,17 @@ row.names(currency.df) <- seq(from = as.Date(toString(max_start_date), '%Y, %j')
 currency.df <- transform(currency.df, row.sd=apply(currency.df, 1, sd, na.rm=TRUE))
 currency.df <- transform(currency.df, row.mean=apply(currency.df, 1, mean, na.rm=TRUE))
 
+plot(currency.df$row.sd, type='l')
+?hist
 # generate window
-window.size <- 10
-min.sd <- min(currency.df$row.sd)
+window.size <- .23
+min.sd <- 0 #min(currency.df$row.sd)
 currency.df <- mutate(currency.df, in.window = seq(from=FALSE, by=FALSE,length.out =  length.tso))
 
 currency.df$in.window <- apply(currency.df,1, function(row) { row[['row.sd']] <= min.sd + window.size } )
 
 # plot
-ccy <- 'ETH'
+ccy <- 'BTC'
 rn <- row.names(currency.df)
 plot.data.out.window <- data.frame(matrix(ncol = 1, nrow = length.tso))
 plot.data.in.window <- data.frame(matrix(ncol = 1, nrow = length.tso))
@@ -141,6 +150,7 @@ currency.df <- currency.df.bkp
 currency.df[currency.df$in.window == FALSE,][[ccy]] <- NA 
 plot.data.in.window[[ccy]] <- currency.df[[ccy]]
 currency.df <- currency.df.bkp
+
 
 par(mar=c(7,4,4,2))
 day.interval <- 90

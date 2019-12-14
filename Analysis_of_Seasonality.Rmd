@@ -104,13 +104,23 @@ for (currency in tso.top50$keys()) {
 
 We decompose all currencies and store the seasonality data in a dataframe.
 ```{r}
-currency.df <- data.frame(matrix(ncol = length(currency.tsos$keys()), nrow = length.tso))
-colnames(currency.df) <- currency.tsos$keys()
+
+#currencies <- currency.tsos$keys()
+currencies <- c('BTC','ETH','XRP')
+currency.df <- data.frame(matrix(ncol = length(currencies), nrow = length.tso))
+colnames(currency.df) <- currencies
 
 # Decompose all currencies
-for (currency in currency.tsos$keys()){
-  decomposed <- decompose(currency.tsos$get(currency))
-  currency.df[currency] <- as.numeric(decomposed$seasonal)
+for (currency in currencies){
+  decomposed <- stl(currency.tsos$get(currency), s.window='periodic', na.action = na.omit)
+  seasonal.part <- as.numeric(decomposed$time.series[,'seasonal'])
+  seasonal.part.max <- max(seasonal.part)
+  seasonal.part.min <- min(seasonal.part)
+  #currency.df[currency] <- as.numeric(decomposed$time.series[,'seasonal'])
+  # normalize data to -1 and 1
+  #currency.df[currency] <- 2 * ((seasonal.part - seasonal.part.min)/(seasonal.part.max - seasonal.part.min)) - 1
+  # normalize data to 0 and 1
+  currency.df[currency] <- (((seasonal.part - seasonal.part.min)/(seasonal.part.max - seasonal.part.min)))
 }
 
 ```
@@ -123,20 +133,28 @@ currency.df <- transform(currency.df, row.sd=apply(currency.df, 1, sd, na.rm=TRU
 currency.df <- transform(currency.df, row.mean=apply(currency.df, 1, mean, na.rm=TRUE))
 ```
 
+```{r}
+hist(currency.df$row.sd,
+     main='Distribution of standard deviation')
+```
 In our analysis, we consider days as impactful or common amongst the currencies, if the standard deviation accross currencies of a given day, does not exceed a certain limit (window). 
 ```{r}
-window.size <- .2 # factor of minimal standard deviation
+window.size <- .6 # factor of minimal standard deviation
 min.sd <- min(currency.df$row.sd)
+sd.limit <- 0.1
 currency.df <- mutate(currency.df, in.window = seq(from=FALSE, by=FALSE,length.out =  length.tso))
 
-currency.df$in.window <- apply(currency.df,1, function(row) { row[['row.sd']] <= min.sd * (1 + window.size)} )
+currency.df$in.window <- apply(currency.df,1, function(row) { row[['row.sd']] <= sd.limit} )
 
 ```
 
+
+
+
 We can have a look at the days which are in the window or outside of the window. For the sake of simplicity we are looking at the top 5 currencies.
 ```{r}
-mfrow=c(5,1)
-for(ccy in c('BTC', 'ETH', 'XRP', 'BCH', 'LTC')) {
+mfrow=c(length(currencies),1)
+for(ccy in currencies) {
   row.names(currency.df) <- seq(from = as.Date(toString(max_start_date), '%Y, %j'), by = "day", length.out = length.tso)
   rn <- row.names(currency.df)
   plot.data.out.window <- data.frame(matrix(ncol = 1, nrow = length.tso))
@@ -171,8 +189,6 @@ for(ccy in c('BTC', 'ETH', 'XRP', 'BCH', 'LTC')) {
 }
 ```
 
-## Direction of slope
-Analysis of derivative of consecutive days. TBD
 
 ## Common dates
 Thanks to the windowing method, we have identified days that are "common" amongst currencies. Let's quantify these days and see how they spread over a year.
@@ -185,23 +201,23 @@ hist(as.integer(format(common.dates, format = '%j')),
      breaks = 73,
      main='Frequency of common days in an average year',
      xlim=c(1,365),
-     ylim=c(0,20),
+     ylim=c(0,35),
      xlab='Day of the Year', xaxt='n',
      col='gray')
 axis(side=1, at=seq(0,365, 5), labels=seq(0,365,5), las=2)
 abline(v=c(0,30.4167,60.8334,91.2501,121.6668,152.0835,182.5002,212.9169,243.3336,273.7503,304.167,334.5837))
-text(0, 15, 'January', srt=90, col = "gray60", adj = c(0, -.15))
-text(30.4167, 15, 'February', srt=90, col = "gray60", adj = c(0, -.15))
-text(60.8334, 15, 'March', srt=90, col = "gray60", adj = c(0, -.15))
-text(91.2501, 15, 'April', srt=90, col = "gray60", adj = c(0, -.15))
-text(121.6668, 15, 'May', srt=90, col = "gray60", adj = c(0, -.15))
-text(152.0835, 15, 'June', srt=90, col = "gray60", adj = c(0, -.15))
-text(182.5002, 15, 'July', srt=90, col = "gray60", adj = c(0, -.15))
-text(212.9169, 15, 'August', srt=90, col = "gray60", adj = c(0, -.15))
-text(243.3336, 15, 'September', srt=90, col = "gray60", adj = c(0, -.15))
-text(273.7503, 15, 'October', srt=90, col = "gray60", adj = c(0, -.15))
-text(304.167, 15, 'November', srt=90, col = "gray60", adj = c(0, -.15))
-text(334.5837, 15, 'December', srt=90, col = "gray60", adj = c(0, -.15))
+text(0, 25, 'January', srt=90, col = "gray60", adj = c(0, -.15))
+text(30.4167, 25, 'February', srt=90, col = "gray60", adj = c(0, -.15))
+text(60.8334, 25, 'March', srt=90, col = "gray60", adj = c(0, -.15))
+text(91.2501, 25, 'April', srt=90, col = "gray60", adj = c(0, -.15))
+text(121.6668, 25, 'May', srt=90, col = "gray60", adj = c(0, -.15))
+text(152.0835, 25, 'June', srt=90, col = "gray60", adj = c(0, -.15))
+text(182.5002, 25, 'July', srt=90, col = "gray60", adj = c(0, -.15))
+text(212.9169, 25, 'August', srt=90, col = "gray60", adj = c(0, -.15))
+text(243.3336, 25, 'September', srt=90, col = "gray60", adj = c(0, -.15))
+text(273.7503, 25, 'October', srt=90, col = "gray60", adj = c(0, -.15))
+text(304.167, 25, 'November', srt=90, col = "gray60", adj = c(0, -.15))
+text(334.5837, 25, 'December', srt=90, col = "gray60", adj = c(0, -.15))
 ```
 
 # Conclusion
