@@ -124,8 +124,6 @@ row.names(currency.df) <- seq(from = as.Date(toString(max_start_date), '%Y, %j')
 currency.df <- transform(currency.df, row.sd=apply(currency.df, 1, sd, na.rm=TRUE))
 currency.df <- transform(currency.df, row.mean=apply(currency.df, 1, mean, na.rm=TRUE))
 
-plot(currency.df$row.sd, type='l')
-?hist
 # generate window
 window.size <- .23
 min.sd <- 0 #min(currency.df$row.sd)

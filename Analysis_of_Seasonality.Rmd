@@ -106,14 +106,17 @@ We decompose all currencies and store the seasonality data in a dataframe.
 ```{r}
 
 #currencies <- currency.tsos$keys()
-currencies <- c('BTC','ETH','XRP')
+currencies <- c('BTC','ETH','XRP','BCH','LTC')
 currency.df <- data.frame(matrix(ncol = length(currencies), nrow = length.tso))
 colnames(currency.df) <- currencies
 
 # Decompose all currencies
+mfrow=c(length(currencies),1)
+par(mar=c(0, 0, 2, 0) + 0.1)
 for (currency in currencies){
   decomposed <- stl(currency.tsos$get(currency), s.window='periodic', na.action = na.omit)
   seasonal.part <- as.numeric(decomposed$time.series[,'seasonal'])
+  plot(seasonal.part, main=paste(currency, 'Seasonality'), ylab='',xlab='', xaxt='n', yaxt='n', type='l')
   seasonal.part.max <- max(seasonal.part)
   seasonal.part.min <- min(seasonal.part)
   #currency.df[currency] <- as.numeric(decomposed$time.series[,'seasonal'])
@@ -122,7 +125,7 @@ for (currency in currencies){
   # normalize data to 0 and 1
   currency.df[currency] <- (((seasonal.part - seasonal.part.min)/(seasonal.part.max - seasonal.part.min)))
 }
-
+par(mar=c(5, 4, 4, 2) + 0.1)
 ```
 
 ## Windowing
@@ -133,23 +136,25 @@ currency.df <- transform(currency.df, row.sd=apply(currency.df, 1, sd, na.rm=TRU
 currency.df <- transform(currency.df, row.mean=apply(currency.df, 1, mean, na.rm=TRUE))
 ```
 
+Finding an optimal threshold for the standard deviation.
+
 ```{r}
+limit <- quantile(currency.df$row.sd, .1)
 hist(currency.df$row.sd,
-     main='Distribution of standard deviation')
+     breaks=50, main = '', xlab='',las=1)
+title(main='Distribution of standard deviation', sub=paste('10% Threshold at ', round(limit,5)), xlab='Standard deviation')
+abline(v=limit, col='red', lty=2)
+text(limit, 100, '10% of data', srt=90, col = "gray60", adj = c(0, -.20))
 ```
+
 In our analysis, we consider days as impactful or common amongst the currencies, if the standard deviation accross currencies of a given day, does not exceed a certain limit (window). 
 ```{r}
-window.size <- .6 # factor of minimal standard deviation
-min.sd <- min(currency.df$row.sd)
-sd.limit <- 0.1
+sd.limit <- limit
 currency.df <- mutate(currency.df, in.window = seq(from=FALSE, by=FALSE,length.out =  length.tso))
 
 currency.df$in.window <- apply(currency.df,1, function(row) { row[['row.sd']] <= sd.limit} )
 
 ```
-
-
-
 
 We can have a look at the days which are in the window or outside of the window. For the sake of simplicity we are looking at the top 5 currencies.
 ```{r}
@@ -185,7 +190,7 @@ for(ccy in currencies) {
   axis(1, at=seq(from = 0, to = length.tso, by = day.interval), labels=rn[seq(1,length(rn), day.interval)], las=2)
   abline(v=seq(from = 0, to = length.tso, by = day.interval))
   lines(plot.data.in.window[[ccy]], col='purple', lwd=3)
-  legend('bottomright', legend=c('Common', 'Unique'), col=c('purple', 'darkgoldenrod1'), lty=1)
+  legend('topright', legend=c('Common', 'Unique'), col=c('purple', 'darkgoldenrod1'), lty=1)
 }
 ```
 
@@ -221,4 +226,4 @@ text(334.5837, 25, 'December', srt=90, col = "gray60", adj = c(0, -.15))
 ```
 
 # Conclusion
-We can see a big accumulation of common days within march and april. Some research suggests, that these days are in line with the fact that people have to pay their tax statements in most countries.
+We can see a big accumulation of common days within certain months such as may and june.
