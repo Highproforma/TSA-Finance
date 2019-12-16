@@ -1,0 +1,155 @@
+---
+title: "Predictive Modelling of Crypto Assets"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+
+
+```{r setup, include=FALSE, echo=FALSE, message=FALSE, warning=FALSE}
+require("knitr")
+nodename = Sys.info()['nodename'] #Get OS name for dynamic working directory setting
+
+if (grepl('SKYLLA', nodename)){
+  Sys.setlocale("LC_TIME", "C")
+  opts_knit$set(root.dir = "G:/Dev/DataScience/TSA-Finance/data")
+} else if (grepl('ARES', nodename)) {
+  Sys.setlocale("LC_TIME", "C")
+  opts_knit$set(root.dir = "C:/Users/Pascal/Documents/Repository/DataScience/TSA-Finance/data")
+} else {
+  opts_knit$set(root.dir = "~/Code/TSA-Finance/data")
+}
+
+library(fBasics)
+library(collections)  # install.packages("collections")
+library(forecast)     # install.packages('forecast')
+library(TTR)          # install.packages('TTR')
+library(moments)      # install.packages('moments')
+library(ggplot2)
+library(timeSeries)
+library(tseries)
+```
+
+
+# Background
+In order to check our understanding and the previously uncovered insights in the descriptive as well as seasonality analysis parts (Descriptive_Stats.Rmd and Analysis_of_Seasonality.Rmd), we will now apply those insights into a preliminary forecasting of crypto assets. As examples, we will continue to use both ETH and BTC.
+
+In order to decide, which predictive model shall be applied and what parameters should be used, we will use our previously gathered insights. We noted the following relevant pieces of information:
+
+- Most crypto time series showed non-stationary distributions (both ETH and BTC belonged to that group)
+- By applying the first differences (order of integration = 1) we were able to transform all time series into stationary ones
+- The time series seem to be highly autocorrelated
+- We did recognise seasonal patterns as well as an overlap of those seasonal patterns across the crypto market
+- While there is a certain correlation between crypto assets and BTC, for most crypto assets, this correlation is only minor. For most assets, the correlation coefficient is negative
+
+
+
+# Model and Fitting
+
+We will first try to fit an ARIMA model and use the fitted model to make predictions over the next 100 days.
+After loading the serialized time series objects, we select a windows of the last roughly 3 years (2017 to 2019) and run the auto.arima() function to determine the parameters of a potential ARIMA model p,d & q. While we know that we achieved a stationary time series with 1 order of differentiation, we would expect a p,1,q configuration of the parameters.
+
+```{r}
+
+top50.ts <- readRDS(file = "tso.top50.rds")
+#get BTC time series, we will only consider the last 2-3 years since the early years do not resemble the current situation
+btc <- window(top50.ts$get('BTC'), start=c(2017,1), end=end(top50.ts$get('BTC')))
+plot(btc)
+
+auto.arima(as.numeric(btc), seasonal=TRUE)   # gives us ARIMA(1,1,2)
+
+# forecast over next 100 days with 95% confidence interval
+btc.fc <- forecast(arima(as.numeric(btc), c(1,1,2)), h=100, level=0.95)
+plot(btc.fc)
+
+```
+
+
+The result shows a ARIMA(1,1,2) model without drift or seasonality. The missing drift and seasonality part is surprising based on our previous findings from the descriptive analysis conducted.
+
+We can further see that our prediction is not very useful since a constant value is predicted for the next 100 day interval with a quickly increasing confidence interval. 
+
+Let us try and see (and quantify) how bad (or may be good, there is still hope) our model really is:
+
+```{r}
+
+checkresiduals(btc.fc)
+
+```
+
+The checkresiduals() function shows us a nice summary of relevant parameters to judge the fit of our model.
+
+- Residuals: The residuals here do not seem to resemble white noise. In our case. there seems to be a constant mean
+- ACF: Here we recognise a few peaks with significant auto-correlation for at least 4 different lags
+- Residual histogram: While the residuals do resemble a normal distribution, we can see some outliers
+- The Ljung-Box test at the bottom confirms our suspicion, with a **p-value of 0.03912** we are **below the significance level of 0.05**, therefore our model is not a good fit
+
+
+In order to try and find a better model, we should try and find a way to get a time series with a more constant variance. We generally have to options to achieve that:
+
+- Choose a **time window** that is more consistent to the current situation (e.g. only consider the last year)
+- Transform the time series to a form with more constant variance (like ARIMA does with order of **differences** or alternatives like the **BoxCox family of transformations**)
+
+We will try to narrow down the selection of our time window to hopefully get more relevant data for the current time series, by selecting only the 2019 data.
+
+
+
+```{r}
+
+#let's adjust the windows to only include 2019 data
+btc.2019 <- window(top50.ts$get('BTC'), start=c(2019,1), end=end(top50.ts$get('BTC')))
+plot(btc.2019)
+
+auto.arima(as.numeric(btc.2019), seasonal=TRUE)   # gives us ARIMA(0,1,1)
+
+# forecast over next 100 days with 95% confidence interval
+btc.fc <- forecast(arima(as.numeric(btc.2019), c(0,1,1)), h=30, level=0.95)
+plot(btc.fc)
+
+```
+
+This time, auto.arima() recommended a ARIMA(0,1,1) model based on the minimised AIC (=4760.9). It seems that the auto-correlation part of the model was completely eliminated (p=0) and only a slight MA part (q=1) was retained.
+
+Checking the residuals of our model, we see a only slightly better picture compared to our previous ARIMA(1,1,2) model.
+
+```{r}
+
+checkresiduals(auto.arima(as.numeric(btc.2019), seasonal=TRUE))
+
+```
+
+While the p-Value of the Ljung-Box test has improved and now shows a relatively good model (p = 0.2203 > alpha = 0.05), the distribution of the residuals still shows some outliers and we see significant spikes of the residuals.
+
+For the sake of completeness, we also performed the same procedure with an additional BoxCox transformation which yielded the same result (not shown in the markdown output).
+
+
+```{r,include=FALSE}
+
+#let's adjust the windows to only include 2019 data
+btc.2019 <- window(top50.ts$get('BTC'), start=c(2019,1), end=end(top50.ts$get('BTC')))
+plot(btc.2019)
+l <- BoxCox.lambda(as.numeric(btc.2019))
+btc.2019.t <- BoxCox(as.numeric(btc.2019), l)
+
+auto.arima(btc.2019.t, seasonal=TRUE)   # gives us ARIMA(0,1,1)
+
+# forecast over next 100 days with 95% confidence interval
+btc.fc <- forecast(Arima(btc.2019.t, c(0,1,1)), h=100, level=0.95)
+plot(btc.fc)
+
+```
+
+# Conclusion
+
+Based on the insights shown above and further research, we would therefore conclude that for crypto assets (here represented by BTC), forecasting of future values purely based on the time series and no further, external parameters is not possible or at least not reliable.
+
+Our research has shown that also others have reached a similiar conclusion see for instance Sumner, 2019 who concluded that BTC follows a random walk or Gantner et al. (2018) who have developed an alternative for the prediction of BTC value by applying network theory based models.
+
+
+# References
+
+Gantner, R., Huber, T., Sornette, D., Reppen, M. & Wheatley, S. (2018). Are Bitcoin Bubbles Predictable? Combining a Generalized Metcalfe's Law and the LPPLS Model. Royal Society Open Science, 6(6)  
+
+Sumner, T. (2019) Forecasting Bitcoin in R. Retrieved via https://rpubs.com/tsumner/time-series on 10.12.2019
+
